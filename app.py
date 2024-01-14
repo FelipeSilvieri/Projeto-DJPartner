@@ -47,9 +47,7 @@ def run():
         session_state.date = session_state.df.iloc[int(session_state.set)]['date']
         session_state.top_tracks = analytics.get_highest_cluster()
         session_state.all_tracks = analytics.get_all_tracks_names()
-        
 
-        
         st.markdown('<h1 style="text-align: center; color: #626262;">📈 Resultados da Análise 📉</h1>', unsafe_allow_html=True)
         st.markdown(f'<h4 style="text-align: center; color: darkgrey;">{session_state.set_name}</h4>', unsafe_allow_html=True)
         st.markdown(f'<h5 style="text-align: center; color: darkgrey;">Gênero: {session_state.genre}</h5>', unsafe_allow_html=True)
@@ -89,6 +87,7 @@ def show_header(session_state):
         button_clicked = st.button(label="Buscar")
         
     if button_clicked:
+        bot.inicializar_selenium()
         session_state.page = 'df'
         st.experimental_rerun()
 

@@ -19,14 +19,16 @@ import time
 
 class Bot():  
     def __init__(self) -> None:
+        self.setlists = pd.DataFrame()
+        
+    def inicializar_selenium(self):
         servico = Service(ChromeDriverManager().install())
         chrome_options = webdriver.ChromeOptions()
         chrome_options.binary_location = "A:\Program Files\Google\Chrome\Application\Chrome.exe"
-        chrome_options.add_argument("--headless")
+        # chrome_options.add_argument("--headless")
         self.navegador = webdriver.Chrome(service=servico,options=chrome_options)
         self.navegador.get('https://www.1001tracklists.com/')
-        self.setlists = pd.DataFrame()
-    
+        
     def search(self,artist):
         input_artist = self.navegador.find_element(By.XPATH,'//*[@id="sBoxInput"]')
         input_artist.send_keys(artist)
