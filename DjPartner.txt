@@ -1,0 +1,29 @@
+-----------------------------------
+------------ DjPartner ------------
+-----------------------------------
+
+
+----- ** PÁGINA TOP CHARTS ** ----------------------------------------------------------------------------
+
+"" Digite o ano desejado: ""
+"" Digite a semana inicial: ""
+"" Digite a semana final: ""
+
+Coisas a exibir:
+
+- gráfico barras cores clusters (musicas mais tocadas)
+
+
+
+----- ** PÁGINA DJ SETS ** -------------------------------------------------------------------------------
+
+Coisas a exibir no Dashboard :
+
+- nome do dj
+- nomes dos sets
+- track(s) mais tocada pelo dj
+- track(s) mais tocada em outras playlists (outros sets) [possivelmente a mais famosa]
+- track(s) menos tocada em outras playlists
+- gráfico barras cores clusters
+- gráfico barras cores tempo no set (com base no numero da track em relação ao numero final e inicial do set)
+- lista com nome das músicas (artista + nome + link youtube se cabível)
