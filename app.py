@@ -10,10 +10,11 @@ from urllib.parse import quote
 from model import Bot
 from analytics import Analytics
 
-# Inicializando Classe Bot
-bot = Bot()
 
 def run():
+    # Inicializando Classe Bot
+    bot = Bot()
+    
     session_state = st.session_state
 
     if 'page' not in session_state:
@@ -41,12 +42,13 @@ def run():
         analytics.tratando_dados()
         analytics.get_clusters()
         session_state.df_set = analytics.get_dataframe()
-        session_state.dispayable_df_set = session_state.df_set[['Nome','Artistas Originais','Artistas Remix','Label','Playlists Plays','Track Position','Cluster']]
+        session_state.displayable_df_set = session_state.df_set[['Nome','Artistas Originais','Artistas Remix','Label','Playlists Plays','Track Position','Cluster']]
         session_state.set_name = session_state.df.iloc[int(session_state.set)]['name']
         session_state.genre = session_state.df.iloc[int(session_state.set)]['genre']
         session_state.date = session_state.df.iloc[int(session_state.set)]['date']
         session_state.top_tracks = analytics.get_highest_cluster()
         session_state.all_tracks = analytics.get_all_tracks_names()
+        
 
         st.markdown('<h1 style="text-align: center; color: #626262;">📈 Resultados da Análise 📉</h1>', unsafe_allow_html=True)
         st.markdown(f'<h4 style="text-align: center; color: darkgrey;">{session_state.set_name}</h4>', unsafe_allow_html=True)
@@ -65,6 +67,7 @@ def run():
         st.markdown('<hr>', unsafe_allow_html=True)
         st.markdown('<h3 style="text-align: center; color: darkblue">Tabela com as músicas do Set</h3>', unsafe_allow_html=True)
         show_dataframe(session_state)
+
         
         st.markdown('<hr>', unsafe_allow_html=True)
         st.markdown('<h3 style="text-align: center; color: darkblue">Todas as tracks com HyperLink (Ordem Decrescente de Playlsits Plays):</h3>', unsafe_allow_html=True)
@@ -87,11 +90,13 @@ def show_header(session_state):
         button_clicked = st.button(label="Buscar")
         
     if button_clicked:
-        bot.inicializar_selenium()
         session_state.page = 'df'
-        st.experimental_rerun()
+        st.rerun()
 
 def show_df(session_state):
+    # Inicializando Classe Bot
+    bot = Bot()
+    
     if session_state.artist:
         
         bot.get_artist_sets(session_state.artist)
@@ -99,7 +104,7 @@ def show_df(session_state):
         artist_lista_tracks = artist_lista_tracks.replace(' ', '_')
         session_state.df = pd.read_csv(f'artists_sets/{artist_lista_tracks}.csv')
         session_state.df = session_state.df[['name','date','genre','tracks_identificadas','qtd_tracks','link']]
-        st.subheader("DataFrame:")
+        st.subheader(f"Lista de Sets do Artista {session_state.artist}:")
         st.dataframe(session_state.df)
         session_state.set = st.text_input(label='escolha um set:', placeholder='Set Index')
         
@@ -144,6 +149,7 @@ def show_analytics(session_state):
         # Gráfico 1: Artistas com mais de 1 ocorrência
         sns.barplot(x=mais_frequentes.index, y=mais_frequentes.values, palette='viridis', ax=axes[0])
         axes[0].set_title('Artistas com mais de 1 ocorrência no set')
+        axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45, ha='right')
         axes[0].set_xlabel('Artista')
         axes[0].set_ylabel('Contagem de Ocorrências')
 
@@ -202,8 +208,30 @@ def show_text_analytics(session_state):
         # Renderize usando st.markdown
         st.markdown(markdown_text, unsafe_allow_html=True)
 
+def get_all_tracks_names_with_links(session_state):
+    # Criar uma lista para armazenar as faixas do cluster mais alto
+    tracks = []
+
+    # Iterar sobre as linhas do DataFrame
+    for index, row in session_state.displayable_df_set.iterrows():
+        # Use a função quote para codificar o nome da faixa para URL
+        track_yt_url = quote(f"{row['Artista']} - {row['Nome']} {row['Remix']}")
+
+        # Crie a URL do YouTube
+        url = f'https://www.youtube.com/results?search_query={track_yt_url}'
+
+        # Crie o texto Markdown com o link e estilo CSS para centralizar horizontalmente
+        link_text = f'<a href="{url}" target="_blank" style="color: inherit; text-decoration: none;">{row["Artista"]} - {row["Nome"]} ({row["Remix"]}) ({int(row["Playlists Plays"])} Plays)</a>'
+
+        # Adicionar à lista
+        tracks.append(link_text)
+
+    # Exibir a lista
+    return tracks
 def show_dataframe(session_state):
-    st.dataframe(session_state.dispayable_df_set)
+    session_state.displayable_df_set['Nome'] = session_state.displayable_df_set.apply(lambda row: get_all_tracks_names_with_links(row), axis=1)
+    st.dataframe(session_state.displayable_df_set, escape=False)
+
     
 def list_all_songs(session_state):
     for track in session_state.all_tracks:
