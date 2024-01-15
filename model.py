@@ -11,22 +11,36 @@ from matplotlib import cm
 from matplotlib.colors import Normalize
 
 from time import sleep
-import random
-import glob
 import pandas as pd
 import re
-import time
+
+# import random
+# import glob
+# import time
 
 class Bot():  
     def __init__(self) -> None:
-        servico = Service(ChromeDriverManager().install())
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.binary_location = "A:\Program Files\Google\Chrome\Application\Chrome.exe"
-        chrome_options.add_argument("--headless")
-        self.navegador = webdriver.Chrome(service=servico,options=chrome_options)
+        if not hasattr(Bot, 'navegador'):
+            servico = Service(ChromeDriverManager().install())
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.binary_location = "A:\Program Files\Google\Chrome\Application\Chrome.exe"
+            chrome_options.add_argument("--headless")
+            Bot.navegador = webdriver.Chrome(service=servico, options=chrome_options)
+        self.navegador = Bot.navegador
         self.navegador.get('https://www.1001tracklists.com/')
         self.setlists = pd.DataFrame()
-    
+        
+        self.wait = WebDriverWait(self.navegador, 10)
+        
+        
+        # servico = Service(ChromeDriverManager().install())
+        # chrome_options = webdriver.ChromeOptions()
+        # chrome_options.binary_location = "A:\Program Files\Google\Chrome\Application\Chrome.exe"
+        # # chrome_options.add_argument("--headless")
+        # self.navegador = webdriver.Chrome(service=servico,options=chrome_options)
+        # self.navegador.get('https://www.1001tracklists.com/')
+        # self.setlists = pd.DataFrame()
+        
     def search(self,artist):
         input_artist = self.navegador.find_element(By.XPATH,'//*[@id="sBoxInput"]')
         input_artist.send_keys(artist)
@@ -271,8 +285,7 @@ class Bot():
         str_set = str(set_link)
         print(str_set)
         self.navegador.get(str_set)
-        sleep(1)
-        sets = self.navegador.find_elements(By.CSS_SELECTOR, ".tlpTog.bItm.tlpItem")
+        sets = self.wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".tlpTog.bItm.tlpItem")))
         for set in sets:
             try:
                 artista = set.find_element(By.XPATH, './/div[@class="bCont tl"]//*[@itemprop="tracks"]/span[contains(@class, "trackValue notranslate")]/span[contains(@class, "notranslate")]').text.strip()
@@ -328,8 +341,6 @@ class Bot():
         sleep(2)
         self.submit()
         sleep(2)
-        # bot.checks()
-        sleep(2)
         self.list_sets()
         self.export_to_csv(artist)
         
@@ -338,38 +349,7 @@ class Bot():
         artist_lista_tracks = artist_lista_tracks.replace(' ', '_')
         print(artist_lista_tracks)
         self.lista_tracks(artist_lista_tracks,int(set)+1)
-
-bot = Bot()
-
-# ------------------------- Get Charts ------------------------- #
-
-# year = 2023
-# primeira_semana = 24
-# ultima_semana = 52
-# weeks = [f'{i:02d}' for i in range(primeira_semana, ultima_semana)]
-
-# for week in weeks:
-#     bot.get_charts(year,week)
-
-# bot.gera_grafico(20,5,10)
-
-# -------------------- Get Artist Sets -------------------- #
-
-# bot.search(artist)  
-# sleep(2)
-# bot.submit()
-# sleep(2)
-# # bot.checks()
-# sleep(2)
-# bot.list_sets()
-# bot.export_to_csv(artist)
-
-# -------------------- Get Artist Set Tracks -------------------- #
-
-# artist_lista_tracks = artist.lower()
-# artist_lista_tracks = artist_lista_tracks.replace(' ', '_')
-# print(artist_lista_tracks)
-
-
-# bot.lista_tracks(artist_lista_tracks,9)
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.navegador.quit()
 

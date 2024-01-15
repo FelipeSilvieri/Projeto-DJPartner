@@ -3,6 +3,7 @@ import re
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from urllib.parse import quote
 
 class Analytics:
 
@@ -52,7 +53,7 @@ class Analytics:
         cluster_means = self.dataframe.groupby('Cluster')['Playlists Plays'].mean().sort_values().index
         mapping = {cluster: i for i, cluster in enumerate(cluster_means)}
         self.dataframe['Cluster'] = self.dataframe['Cluster'].map(mapping)
-    
+
     def get_highest_cluster(self):
         # Encontrar o número do cluster mais alto
         cluster_mais_alto = self.dataframe['Cluster'].max()
@@ -73,17 +74,46 @@ class Analytics:
         # Exibir a lista
         return faixas_cluster_mais_alto
 
-    def get_all_tracks_names(self):
-        # Criar uma lista para armazenar as faixas do cluster mais alto
-        tracks = []
+    def get_top_5(self):
+        # Ordenar o DataFrame com base nas "Playlists Plays" em ordem decrescente
+        sorted_df = self.dataframe.sort_values(by='Playlists Plays', ascending=False)
 
-        # Iterar sobre as linhas do DataFrame
-        for index, row in self.dataframe.iterrows():
-            # Adicionar ('Artista' - 'Nome') à lista
+        # Criar listas para armazenar os dados do artista, nome, remix e plays
+        artist_name_remix = []
+        plays = []
+
+        # Iterar sobre as top tracks
+        for index, row in sorted_df.head(5).iterrows():
             if pd.notna(row['Remix']):
-                tracks.append(f"{row['Artista']} - {row['Nome']} ({row['Remix']}) ({int(row['Playlists Plays'])} Plays)")
+                track_info = f"{row['Artista']} - {row['Nome']} ({row['Remix']})"
             else:
-                tracks.append(f"{row['Artista']} - {row['Nome']} ({int(row['Playlists Plays'])} Plays)")
+                track_info = f"{row['Artista']} - {row['Nome']}"
+            artist_name_remix.append(track_info)
+            
+            plays_info = f"({int(row['Playlists Plays'])} Plays)"
+            plays.append(plays_info)
 
-        # Exibir a lista
-        return tracks
+        return artist_name_remix, plays
+
+    def get_all_tracks_names(self):
+        # Ordenar o DataFrame com base nas "Playlists Plays" em ordem decrescente
+        sorted_df = self.dataframe.sort_values(by='Playlists Plays', ascending=False)
+
+        # Criar listas para armazenar os dados do artista, nome, remix e plays
+        artist_name_remix = []
+        plays = []
+
+        # Iterar sobre as top tracks
+        for index, row in sorted_df.iterrows():
+            if pd.notna(row['Remix']):
+                track_info = f"{row['Artista']} - {row['Nome']} ({row['Remix']})"
+            else:
+                track_info = f"{row['Artista']} - {row['Nome']}"
+            artist_name_remix.append(track_info)
+            
+            plays_info = f"({int(row['Playlists Plays'])} Plays)"
+            plays.append(plays_info)
+
+        return artist_name_remix, plays
+    
+    
