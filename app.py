@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import math
 from urllib.parse import quote
 
 # Importanto classes
@@ -28,6 +29,7 @@ def run():
         session_state.set_name = ''
         session_state.genre = ''
 
+
     if session_state.page == 'header':
         show_header(session_state)
     
@@ -42,32 +44,71 @@ def run():
         analytics.tratando_dados()
         analytics.get_clusters()
         session_state.df_set = analytics.get_dataframe()
-        session_state.displayable_df_set = session_state.df_set[['Nome','Artistas Originais','Artistas Remix','Label','Playlists Plays','Track Position','Cluster']]
+        session_state.displayable_df_set = session_state.df_set[['Nome','Artistas Originais','Artistas Remix','Label','Playlists Plays','Track Position']]
         session_state.set_name = session_state.df.iloc[int(session_state.set)]['name']
         session_state.genre = session_state.df.iloc[int(session_state.set)]['genre']
         session_state.date = session_state.df.iloc[int(session_state.set)]['date']
         session_state.top_tracks, session_state.top_plays = analytics.get_top_5()
         session_state.all_tracks, session_state.all_plays = analytics.get_all_tracks_names()
+        session_state.first_track = None
+        session_state.last_track = None
         
+        # ------------------------------------------ First Track ----------------------------------------------------
+        indice_menor_posicao = session_state.df_set['Track Position'].idxmin()
+        artista_min = session_state.df_set.loc[indice_menor_posicao, 'Artista']
+        nome_min = session_state.df_set.loc[indice_menor_posicao, 'Nome']
+        remix_min = session_state.df_set.loc[indice_menor_posicao, 'Remix']
+        session_state.track_position_min = session_state.df_set.loc[indice_menor_posicao, 'Track Position']
+        if not math.isnan(remix_min):
+            session_state.first_track = f"{artista_min} - {nome_min} ({remix_min})"
+        else:
+            session_state.first_track = f"{artista_min} - {nome_min}"
+        
+        # ------------------------------------------ Last Track ----------------------------------------------------
+        indice_maior_posicao = session_state.df_set['Track Position'].idxmax()
+        artista_max = session_state.df_set.loc[indice_maior_posicao, 'Artista']
+        nome_max = session_state.df_set.loc[indice_maior_posicao, 'Nome']
+        remix_max = session_state.df_set.loc[indice_maior_posicao, 'Remix']
+        if not math.isnan(remix_max):
+            session_state.last_track = f"{artista_max} - {nome_max} ({remix_max})"
+        else:
+            session_state.last_track = f"{artista_max} - {nome_max}"
+            
+        # ----------------------------------------------------------------------------------------------------------
 
         st.markdown('<h1 style="text-align: center; color: #626262;">📈 Resultados da Análise 📉</h1>', unsafe_allow_html=True)
         st.markdown(f'<h4 style="text-align: center; color: darkgrey;">{session_state.set_name}</h4>', unsafe_allow_html=True)
         st.markdown(f'<h5 style="text-align: center; color: darkgrey;">Gênero: {session_state.genre}</h5>', unsafe_allow_html=True)
         st.markdown(f'<h6 style="text-align: center; color: grey;">Data: {session_state.date}</h6>', unsafe_allow_html=True)
         
+        st.markdown("<br>", unsafe_allow_html=True)
+        
         st.markdown('<hr>', unsafe_allow_html=True)
 
-        # st.markdown('<h3 style="text-align: center; color: darkblue;">Análises Textuais</h3>', unsafe_allow_html=True)
-        
+
         text_playlist_plays = """
             <div style="padding: 10px; margin: 16px; border: 1px solid lightgrey; border-radius: 5px;">            
                 <h4 style="text-align: center; color: darkblue;">O que são "Playlists Plays"? 🧐</h4>
                 <p style="background-color: lightgrey; color: grey; border-radius: 5px; text-align: center;"><strong>Playlists Plays</strong> são basicamente <strong>quantas vezes</strong> tal musica foi tocada <strong>em outros sets!</strong> </p>
             </div>
-        """
-        
+        """        
         st.markdown(text_playlist_plays,unsafe_allow_html=True)
         show_text_analytics(session_state) 
+        
+        text_intro_outro = f"""
+            <div style="padding: 10px; margin-top: 16px; border: 1px solid lightgrey; background-color: lightgrey ; border-radius: 5px;">            
+                <h4 style="text-align: center; color: darkred;">⏭️ Como começou, e como terminou? ⏮️</h4>
+                <p style="background-color: white; color: grey; border-radius: 5px; text-align: center;">
+                    A <strong>{session_state.track_position_min}ª</strong> Música tocada foi <strong>{session_state.first_track}</strong>
+                </p>
+                <p style="background-color: white; color: grey; border-radius: 5px; text-align: center;">
+                    A <strong>última</strong> Música listada tocada foi <strong>{session_state.last_track}</strong>
+                </p>
+            </div>
+        """
+        
+        st.markdown(text_intro_outro,unsafe_allow_html=True)
+
         st.markdown('<hr>', unsafe_allow_html=True)
         
         st.markdown('<h4 style="text-align: center; color: darkblue; margin-bottom: 16px;">Análise de Playlists Plays ▶️</h4>', unsafe_allow_html=True)
@@ -145,6 +186,35 @@ def show_playlists_plays_analytics(session_state):
 
         plt.tight_layout()
         st.pyplot(fig)
+        
+        # Adiciona análise textual abaixo do plot
+        min_value = session_state.df_set['Playlists Plays'].min()
+        max_value = session_state.df_set['Playlists Plays'].max()
+
+        analysis_text = f"<p>As Playlists Plays do set variam de <br>{min_value} ➖até➖ {max_value}.</p>"
+
+        # Verifica a existência de outliers
+        q1 = session_state.df_set['Playlists Plays'].quantile(0.25)
+        q3 = session_state.df_set['Playlists Plays'].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        outliers = session_state.df_set[
+            (session_state.df_set['Playlists Plays'] < lower_bound) | (session_state.df_set['Playlists Plays'] > upper_bound)
+        ]
+
+        if not outliers.empty:
+            analysis_text += (
+                f"<br>Além disso, existem algumas faixas que são <strong>consideravelmente mais tocadas</strong> do que a média do set."
+                f"São elas: {', '.join(outliers['Artista'] + ' - ' + outliers['Nome'] + ' (' + outliers['Remix'].fillna('') + ')')}."
+            )
+
+        # Adiciona análise textual estilizada
+        st.markdown(
+            f'<div style="background-color: lightgrey; border-radius: 5px; padding: 10px; margin-top: 20px;">{analysis_text}</div>',
+            unsafe_allow_html=True
+        )
 
 def show_remix_analytics(session_state):
     # Contar a ocorrência de valores na coluna 'Remix'
@@ -165,8 +235,8 @@ def show_remix_analytics(session_state):
     # Gráfico 2: Gráfico de Barras
     session_state.df_set['Group'] = np.where(session_state.df_set['Remix'].isna(), 'Not Remix', 'Remix')
     sns.barplot(x=session_state.df_set['Nome'], y='Playlists Plays', hue='Group', data=session_state.df_set, palette={'Not Remix': 'lightgreen', 'Remix': 'darkgreen'}, dodge=False, ax=axs[1])
-    axs[1].set_xticks(session_state.df_set.index)
-    axs[1].set_xticklabels(session_state.df_set.index, rotation=45, ha='right')
+    axs[1].set_xticks(session_state.df_set['Nome'])
+    axs[1].set_xticklabels(session_state.df_set['Nome'], rotation=45, ha='right')
     axs[1].set_xlabel('Linhas')
     axs[1].set_ylabel('Remixes no set (visualmente)')
     axs[1].set_title('Gráfico de Barras com Cores por Grupo')
@@ -215,12 +285,12 @@ def show_text_analytics(session_state):
     
     list_html = f"""
         <ul>
-            <li>A média de Playlists Plays nesse set é de {session_state.text_ppmean} Plays.</li>
-            <li>A música mais popular em termos de Playlists Plays é "{session_state.text_musica_p}" com {session_state.text_pmax_p} Plays.</li>
+            <li style="text-align: center;">A média de Playlists Plays nesse set é de {session_state.text_ppmean} Plays.</li>
         </ul>
     """
-    
     st.markdown(list_html, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown('<h6 style="color: darkgrey; text-align: center;">Tracks mais famosas (com base nos Playlists Plays):<h6>',unsafe_allow_html=True)
     
@@ -261,11 +331,11 @@ def get_all_tracks_names_with_links(session_state):
 
     # Exibir a lista
     return tracks
+
 def show_dataframe(session_state):
     # session_state.displayable_df_set['Nome'] = session_state.displayable_df_set.apply(lambda row: get_all_tracks_names_with_links(row), axis=1)
     st.dataframe(session_state.displayable_df_set)
-
-    
+  
 def list_all_songs(session_state):
     for track, plays in zip(session_state.all_tracks, session_state.all_plays):
         # Use a função quote para codificar o nome da faixa para URL
