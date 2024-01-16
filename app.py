@@ -271,7 +271,7 @@ def show_remix_analytics(session_state):
 
     # Gráfico 2: Gráfico de Barras
     session_state.df_set['Group'] = np.where(session_state.df_set['Remix'].isna(), 'Original Mix', 'Remix')
-    sns.barplot(x=session_state.df_set['Nome'], y='Playlists Plays', hue='Group', data=session_state.df_set, palette={'Not Remix': 'lightgreen', 'Remix': 'darkgreen'}, dodge=False, ax=axs[1])
+    sns.barplot(x=session_state.df_set['Nome'], y='Playlists Plays', hue='Group', data=session_state.df_set, palette={'Original Mix': 'lightgreen', 'Remix': 'darkgreen'}, dodge=False, ax=axs[1])
     axs[1].set_xticks([])
     axs[1].set_xlabel('Tracks ordem decrescente de Playlists Plays')
     axs[1].set_ylabel('Remixes no set (visualmente)')
@@ -284,7 +284,7 @@ def show_artists_analytics(session_state):
     mais_frequentes = more_frequent_artists(session_state)
     
     # Criando uma paleta de tons de vermelho mais escuros
-    red_palette = sns.color_palette("Reds", n_colors=len(mais_frequentes))
+    red_palette = sns.color_palette("Reds", n_colors=len(mais_frequentes))[::-1]
 
     # Criando subplots com 1 linha e 2 colunas
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -297,9 +297,10 @@ def show_artists_analytics(session_state):
     axes[0].set_ylabel('Contagem de Ocorrências')
 
     # Gráfico 2: Contagem de Remix e Não Remix
-    unique_values = session_state.df_set['Remix'].unique()
-    red_palette_remix = sns.color_palette("Reds", n_colors=len(unique_values))[::-1]
-    sns.countplot(data=session_state.df_set, x='Remix', palette=red_palette_remix, ax=axes[1])
+    remix_counts = session_state.df_set['Remix'].value_counts()
+    red_palette_remix = sns.color_palette("Reds", n_colors=len(remix_counts))[::-1]
+
+    sns.countplot(data=session_state.df_set, x='Remix', palette=red_palette_remix, order=remix_counts.index, ax=axes[1])
     axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right')
     axes[1].set_ylabel('Artistas Remixes')
     axes[1].set_title('Contagem de Remix e Não Remix')
