@@ -81,8 +81,6 @@ def run():
         st.markdown(f'<h5 style="text-align: center; color: darkgrey;">Gênero: {session_state.genre}</h5>', unsafe_allow_html=True)
         st.markdown(f'<h6 style="text-align: center; color: grey;">Data: {session_state.date}</h6>', unsafe_allow_html=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        
         st.markdown('<hr>', unsafe_allow_html=True)
 
 
@@ -90,6 +88,7 @@ def run():
             <div style="padding: 10px; margin: 16px; border: 1px solid lightgrey; border-radius: 5px;">            
                 <h4 style="text-align: center; color: darkblue;">O que são "Playlists Plays"? 🧐</h4>
                 <p style="background-color: lightgrey; color: grey; border-radius: 5px; text-align: center;"><strong>Playlists Plays</strong> são basicamente <strong>quantas vezes</strong> tal musica foi tocada <strong>em outros sets!</strong> </p>
+                <p style="text-align: center;">(ou seja, o tanto de suporte que essa track teve)</p>
             </div>
         """        
         st.markdown(text_playlist_plays,unsafe_allow_html=True)
@@ -119,9 +118,13 @@ def run():
         
         st.markdown('<h4 style="text-align: center; color: darkblue; margin-bottom: 16px;">Análise de Artistas 👨‍🦱</h4>', unsafe_allow_html=True)
         show_artists_analytics(session_state)
+        
+        st.markdown('<h4 style="text-align: center; color: darkblue; margin-bottom: 16px;">Análise Temporal Set 🕝</h4>', unsafe_allow_html=True)
+        show_set_order(session_state)
                 
         st.markdown('<hr>', unsafe_allow_html=True)
         st.markdown('<h3 style="text-align: center; color: darkblue">Tabela com as músicas do Set</h3>', unsafe_allow_html=True)
+        st.markdown('<h6 style="text-align: center; background-color: lightgrey; border-radius: 5px;">obs: você pode ordenar cada coluna da maneira desejada, apenas clicando na coluna.</h6>', unsafe_allow_html=True)
         show_dataframe(session_state)
 
         
@@ -187,11 +190,6 @@ def show_playlists_plays_analytics(session_state):
         plt.tight_layout()
         st.pyplot(fig)
         
-        # Adiciona análise textual abaixo do plot
-        min_value = session_state.df_set['Playlists Plays'].min()
-        max_value = session_state.df_set['Playlists Plays'].max()
-
-        analysis_text = f"<p>As Playlists Plays do set variam de <br>{min_value} ➖até➖ {max_value}.</p>"
 
         # Verifica a existência de outliers
         q1 = session_state.df_set['Playlists Plays'].quantile(0.25)
@@ -200,21 +198,62 @@ def show_playlists_plays_analytics(session_state):
         lower_bound = q1 - 1.5 * iqr
         upper_bound = q3 + 1.5 * iqr
 
+        # Adiciona análise textual abaixo do plot
+        min_value = session_state.df_set['Playlists Plays'].min()
+        max_value = session_state.df_set[session_state.df_set['Playlists Plays'] <= upper_bound]['Playlists Plays'].max()
         outliers = session_state.df_set[
             (session_state.df_set['Playlists Plays'] < lower_bound) | (session_state.df_set['Playlists Plays'] > upper_bound)
         ]
 
+        analysis_text = f'<h5 style="text-align: center;">As Playlists Plays do set variam de <br>{int(min_value)} ➖até➖ {int(max_value)}</h5>'
+        
+        
         if not outliers.empty:
-            analysis_text += (
-                f"<br>Além disso, existem algumas faixas que são <strong>consideravelmente mais tocadas</strong> do que a média do set."
-                f"São elas: {', '.join(outliers['Artista'] + ' - ' + outliers['Nome'] + ' (' + outliers['Remix'].fillna('') + ')')}."
-            )
+            analysis_text = f'<h5 style="text-align: center;">Quase 100% do set tem Playlists Plays variando de <br><br><strong style="background-color: white; padding-inline:5px; border-radius: 5px; color: #4a7379;">{int(min_value)} a {int(max_value)}</strong></h5>'
+            analysis_text += '<p style="text-align: center;">No entanto, existem algumas faixas que são <strong>consideravelmente mais tocadas</strong> do que a média do set. São elas: <br>'
+                        
+            outlier_info = [f"{artista} - {nome} ({remix}) ({plays} plays)" if pd.notna(remix) else f"{artista} - {nome} ({plays} plays)" for artista, nome, remix, plays in zip(outliers['Artista'], outliers['Nome'], outliers['Remix'], outliers['Playlists Plays'])]
+
+            analysis_text += f"{', '.join(outlier_info)}</p>"
+        else:
+            analysis_text = f'<h5 style="text-align: center;">O set tem Playlists Plays variando de <br><strong>{int(min_value)} a {int(max_value)}</strong> Plays </h5>'
+
 
         # Adiciona análise textual estilizada
         st.markdown(
-            f'<div style="background-color: lightgrey; border-radius: 5px; padding: 10px; margin-top: 20px;">{analysis_text}</div>',
+            f'<div style="background-color: #a9babd; border-radius: 5px; padding: 10px; margin-top: 20px;">{analysis_text}</div>',
             unsafe_allow_html=True
         )
+
+def show_set_order(session_state):
+    # Ordenar o DataFrame pelo 'Track Position'
+    df_sorted = session_state.df_set.sort_values('Track Position')
+
+    # Criar uma figura e eixos
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Adicionar uma linha para cada música no set
+    line = ax.plot(df_sorted['Track Position'], df_sorted['Playlists Plays'], marker='o', label='Playlists Plays')[0]
+
+    # Preencher a área sob a linha com um azul clarinho
+    ax.fill_between(df_sorted['Track Position'], df_sorted['Playlists Plays'], color='lightblue', alpha=0.4)
+
+    # Configurar rótulos no eixo x
+    positions = [0, len(session_state.df_set) // 2, len(session_state.df_set)]
+    labels = ['Inicio Set', 'Metade Set', 'Fim Set']
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels)
+
+    # Configurar rótulos e título
+    ax.set_xlabel('Posição da Música no Set')
+    ax.set_ylabel('Playlists Plays')
+    ax.set_title('Playlists Plays em Função da Posição da Música no Set')
+
+    # Adicionar legenda
+    ax.legend()
+
+    # Exibir o gráfico
+    st.pyplot(fig)
 
 def show_remix_analytics(session_state):
     # Contar a ocorrência de valores na coluna 'Remix'
@@ -228,15 +267,15 @@ def show_remix_analytics(session_state):
     rotulos = ['Remix', 'Original Mix']
 
     # Gráfico 1: Pizza remix
-    fig, axs = plt.subplots(1, 2, figsize=(12, 4))  # 1 linha, 2 colunas
-    axs[0].pie(contagens, labels=rotulos, autopct='%1.1f%%', colors=['skyblue', 'lightcoral'])
+    fig, axs = plt.subplots(1, 2, figsize=(12, 6))  # Ajuste a altura conforme necessário
+    axs[0].pie(contagens, labels=rotulos, autopct='%1.1f%%', colors=['darkgreen', 'lightgreen'])
     axs[0].set_title('Porcentagem de Remix vs. Não Remix')
 
     # Gráfico 2: Gráfico de Barras
     session_state.df_set['Group'] = np.where(session_state.df_set['Remix'].isna(), 'Not Remix', 'Remix')
     sns.barplot(x=session_state.df_set['Nome'], y='Playlists Plays', hue='Group', data=session_state.df_set, palette={'Not Remix': 'lightgreen', 'Remix': 'darkgreen'}, dodge=False, ax=axs[1])
     axs[1].set_xticks(session_state.df_set['Nome'])
-    axs[1].set_xticklabels(session_state.df_set['Nome'], rotation=45, ha='right')
+    axs[1].figure.autofmt_xdate(rotation=45)
     axs[1].set_xlabel('Linhas')
     axs[1].set_ylabel('Remixes no set (visualmente)')
     axs[1].set_title('Gráfico de Barras com Cores por Grupo')
@@ -244,29 +283,55 @@ def show_remix_analytics(session_state):
     plt.tight_layout()  # Ajusta o layout para evitar sobreposição
     st.pyplot(fig)
  
+# def show_artists_analytics(session_state):
+#         mais_frequentes = more_frequent_artists(session_state)
+#         # Criando subplots com 1 linha e 2 colunas
+#         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+#         # Gráfico 1: Artistas com mais de 1 ocorrência
+#         sns.barplot(x=mais_frequentes.index, y=mais_frequentes.values, palette='viridis', ax=axes[0])
+#         axes[0].set_title('Artistas com mais de 1 ocorrência no set')
+#         axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45, ha='right')
+#         axes[0].set_xlabel('Artista')
+#         axes[0].set_ylabel('Contagem de Ocorrências')
+        
+#         # Gráfico 2: Contagem de Remix e Não Remix
+#         unique_values = session_state.df_set['Remix'].unique()
+#         palette = {value: f'C{i}' for i, value in enumerate(unique_values)}
+#         sns.countplot(data=session_state.df_set, x='Remix', palette=palette, ax=axes[1])
+#         axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right')
+#         axes[1].set_ylabel('Artistas Remixes')
+#         axes[1].set_title('Contagem de Remix e Não Remix')
+#         axes[1].set_title('')
+        
+#         st.pyplot(fig)
+
 def show_artists_analytics(session_state):
-        mais_frequentes = more_frequent_artists(session_state)
-        # Criando subplots com 1 linha e 2 colunas
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    mais_frequentes = more_frequent_artists(session_state)
+    
+    # Criando uma paleta de tons de vermelho mais escuros
+    red_palette = sns.color_palette("Reds", n_colors=len(mais_frequentes))
 
-        # Gráfico 1: Artistas com mais de 1 ocorrência
-        sns.barplot(x=mais_frequentes.index, y=mais_frequentes.values, palette='viridis', ax=axes[0])
-        axes[0].set_title('Artistas com mais de 1 ocorrência no set')
-        axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45, ha='right')
-        axes[0].set_xlabel('Artista')
-        axes[0].set_ylabel('Contagem de Ocorrências')
-        
-        # Gráfico 2: Contagem de Remix e Não Remix
-        unique_values = session_state.df_set['Remix'].unique()
-        palette = {value: f'C{i}' for i, value in enumerate(unique_values)}
-        sns.countplot(data=session_state.df_set, x='Remix', palette=palette, ax=axes[1])
-        axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right')
-        axes[1].set_ylabel('Artistas Remixes')
-        axes[1].set_title('Contagem de Remix e Não Remix')
-        axes[1].set_title('')
-        
-        st.pyplot(fig)
+    # Criando subplots com 1 linha e 2 colunas
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
+    # Gráfico 1: Artistas com mais de 1 ocorrência
+    sns.barplot(x=mais_frequentes.index, y=mais_frequentes.values, palette=red_palette, ax=axes[0])
+    axes[0].set_title('Artistas com mais de 1 ocorrência no set')
+    axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45, ha='right')
+    axes[0].set_xlabel('Artista')
+    axes[0].set_ylabel('Contagem de Ocorrências')
+
+    # Gráfico 2: Contagem de Remix e Não Remix
+    unique_values = session_state.df_set['Remix'].unique()
+    red_palette_remix = sns.color_palette("Reds", n_colors=len(unique_values))
+    sns.countplot(data=session_state.df_set, x='Remix', palette=red_palette_remix, ax=axes[1])
+    axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right')
+    axes[1].set_ylabel('Artistas Remixes')
+    axes[1].set_title('Contagem de Remix e Não Remix')
+
+    st.pyplot(fig)
+       
 def show_text_analytics(session_state):
     session_state.ppmean = session_state.df_set['Playlists Plays'].mean()
     
@@ -284,9 +349,9 @@ def show_text_analytics(session_state):
     session_state.text_pmax_p= f'<span style="color: green;">{int(max_pp)}</span>'
     
     list_html = f"""
-        <ul>
-            <li style="text-align: center;">A média de Playlists Plays nesse set é de {session_state.text_ppmean} Plays.</li>
-        </ul>
+        <div style="display: flex; justify-content: center;">
+            <span style="box-shadow: 3px 3px 3px 0px rgba(0, 0, 0, 0.2); border-radius: 5px; padding-inline: 5px;">A média de Playlists Plays nesse set é de {session_state.text_ppmean} Plays.</span>
+        </div>
     """
     st.markdown(list_html, unsafe_allow_html=True)
     
@@ -304,7 +369,7 @@ def show_text_analytics(session_state):
         # Crie o texto Markdown com o link e estilo CSS para centralizar horizontalmente
         markdown_text = f"""
             <div style="text-align: center;">
-                <a href="{url}" style="display: inline-block; text-decoration: none; color: #4a7379; background-color: #d0d0d0; border-radius: 5px; margin: 5px;">▶️ {track}</a><span> {plays}</span>
+                <a href="{url}" style="display: inline-block; text-decoration: none; color: #4a7379; background-color: #d0d0d0; border-radius: 5px; margin: 5px; padding-inline: 5px;">▶️ {track}</a><span> {plays}</span>
             </div>
         """
 
@@ -347,7 +412,7 @@ def list_all_songs(session_state):
         # Crie o texto Markdown com o link e estilo CSS para centralizar horizontalmente
         markdown_text = f"""
             <div style="text-align: center;">
-                <a href="{url}" style="display: inline-block; text-decoration: none; color: #4a7379; background-color: #d0d0d0; border-radius: 5px; margin: 5px;">{track}</a><span> {plays}</span>
+                <a href="{url}" style="display: inline-block; text-decoration: none; color: #4a7379; background-color: #d0d0d0; border-radius: 5px; margin: 5px; padding-inline: 5px;">▶️{track}</a><span> {plays}</span>
             </div>
         """
 
