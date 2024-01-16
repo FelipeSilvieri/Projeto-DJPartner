@@ -59,22 +59,20 @@ def run():
         nome_min = session_state.df_set.loc[indice_menor_posicao, 'Nome']
         remix_min = session_state.df_set.loc[indice_menor_posicao, 'Remix']
         session_state.track_position_min = session_state.df_set.loc[indice_menor_posicao, 'Track Position']
-        if not math.isnan(remix_min):
-            session_state.first_track = f"{artista_min} - {nome_min} ({remix_min})"
-        else:
+        if pd.isna(remix_min):
             session_state.first_track = f"{artista_min} - {nome_min}"
-        
+        else:
+            session_state.first_track = f"{artista_min} - {nome_min} ({remix_min})"
+
         # ------------------------------------------ Last Track ----------------------------------------------------
         indice_maior_posicao = session_state.df_set['Track Position'].idxmax()
         artista_max = session_state.df_set.loc[indice_maior_posicao, 'Artista']
         nome_max = session_state.df_set.loc[indice_maior_posicao, 'Nome']
         remix_max = session_state.df_set.loc[indice_maior_posicao, 'Remix']
-        if not math.isnan(remix_max):
-            session_state.last_track = f"{artista_max} - {nome_max} ({remix_max})"
-        else:
+        if pd.isna(remix_max):
             session_state.last_track = f"{artista_max} - {nome_max}"
-            
-        # ----------------------------------------------------------------------------------------------------------
+        else:
+            session_state.last_track = f"{artista_max} - {nome_max} ({remix_max})"
 
         st.markdown('<h1 style="text-align: center; color: #626262;">📈 Resultados da Análise 📉</h1>', unsafe_allow_html=True)
         st.markdown(f'<h4 style="text-align: center; color: darkgrey;">{session_state.set_name}</h4>', unsafe_allow_html=True)
@@ -209,12 +207,12 @@ def show_playlists_plays_analytics(session_state):
         
         
         if not outliers.empty:
-            analysis_text = f'<h5 style="text-align: center;">Quase 100% do set tem Playlists Plays variando de <br><br><strong style="background-color: white; padding-inline:5px; border-radius: 5px; color: #4a7379;">{int(min_value)} a {int(max_value)}</strong></h5>'
-            analysis_text += '<p style="text-align: center;">No entanto, existem algumas faixas que são <strong>consideravelmente mais tocadas</strong> do que a média do set. São elas: <br>'
+            analysis_text = f'<h5 style="text-align: center;">A maior parte do set tem Playlists Plays variando de <br><br><strong style="background-color: white; padding-inline:5px; border-radius: 5px; color: #4a7379;">{int(min_value)} a {int(max_value)}</strong></h5>'
+            analysis_text += '<p style="text-align: center;">No entanto, existem algumas faixas que são <strong>consideravelmente mais tocadas</strong> do que a média do set. São elas:<br><br><strong>'
                         
             outlier_info = [f"{artista} - {nome} ({remix}) ({plays} plays)" if pd.notna(remix) else f"{artista} - {nome} ({plays} plays)" for artista, nome, remix, plays in zip(outliers['Artista'], outliers['Nome'], outliers['Remix'], outliers['Playlists Plays'])]
 
-            analysis_text += f"{', '.join(outlier_info)}</p>"
+            analysis_text += f"{'<br>'.join(outlier_info)}</strong></p>"
         else:
             analysis_text = f'<h5 style="text-align: center;">O set tem Playlists Plays variando de <br><strong>{int(min_value)} a {int(max_value)}</strong> Plays </h5>'
 
@@ -272,39 +270,15 @@ def show_remix_analytics(session_state):
     axs[0].set_title('Porcentagem de Remix vs. Não Remix')
 
     # Gráfico 2: Gráfico de Barras
-    session_state.df_set['Group'] = np.where(session_state.df_set['Remix'].isna(), 'Not Remix', 'Remix')
+    session_state.df_set['Group'] = np.where(session_state.df_set['Remix'].isna(), 'Original Mix', 'Remix')
     sns.barplot(x=session_state.df_set['Nome'], y='Playlists Plays', hue='Group', data=session_state.df_set, palette={'Not Remix': 'lightgreen', 'Remix': 'darkgreen'}, dodge=False, ax=axs[1])
-    axs[1].set_xticks(session_state.df_set['Nome'])
-    axs[1].figure.autofmt_xdate(rotation=45)
-    axs[1].set_xlabel('Linhas')
+    axs[1].set_xticks([])
+    axs[1].set_xlabel('Tracks ordem decrescente de Playlists Plays')
     axs[1].set_ylabel('Remixes no set (visualmente)')
     axs[1].set_title('Gráfico de Barras com Cores por Grupo')
-
+    
     plt.tight_layout()  # Ajusta o layout para evitar sobreposição
     st.pyplot(fig)
- 
-# def show_artists_analytics(session_state):
-#         mais_frequentes = more_frequent_artists(session_state)
-#         # Criando subplots com 1 linha e 2 colunas
-#         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-#         # Gráfico 1: Artistas com mais de 1 ocorrência
-#         sns.barplot(x=mais_frequentes.index, y=mais_frequentes.values, palette='viridis', ax=axes[0])
-#         axes[0].set_title('Artistas com mais de 1 ocorrência no set')
-#         axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=45, ha='right')
-#         axes[0].set_xlabel('Artista')
-#         axes[0].set_ylabel('Contagem de Ocorrências')
-        
-#         # Gráfico 2: Contagem de Remix e Não Remix
-#         unique_values = session_state.df_set['Remix'].unique()
-#         palette = {value: f'C{i}' for i, value in enumerate(unique_values)}
-#         sns.countplot(data=session_state.df_set, x='Remix', palette=palette, ax=axes[1])
-#         axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right')
-#         axes[1].set_ylabel('Artistas Remixes')
-#         axes[1].set_title('Contagem de Remix e Não Remix')
-#         axes[1].set_title('')
-        
-#         st.pyplot(fig)
 
 def show_artists_analytics(session_state):
     mais_frequentes = more_frequent_artists(session_state)
@@ -324,7 +298,7 @@ def show_artists_analytics(session_state):
 
     # Gráfico 2: Contagem de Remix e Não Remix
     unique_values = session_state.df_set['Remix'].unique()
-    red_palette_remix = sns.color_palette("Reds", n_colors=len(unique_values))
+    red_palette_remix = sns.color_palette("Reds", n_colors=len(unique_values))[::-1]
     sns.countplot(data=session_state.df_set, x='Remix', palette=red_palette_remix, ax=axes[1])
     axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right')
     axes[1].set_ylabel('Artistas Remixes')
